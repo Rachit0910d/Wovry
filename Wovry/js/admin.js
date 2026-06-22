@@ -85,8 +85,8 @@ async function loadDashboard() {
         // Monthly Sales Trend
         const monthlySales = {};
         orders.forEach(o => {
-            const date = o.createdAt?.toDate?.() || new Date(o.createdAt?.seconds * 1000);
-            if (date) {
+            const date = o.createdAt?.toDate?.() || (o.createdAt?.seconds ? new Date(o.createdAt.seconds * 1000) : null);
+            if (date && !isNaN(date.getTime())) {
                 const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 monthlySales[key] = (monthlySales[key] || 0) + (o.total || 0);
             }
@@ -286,6 +286,7 @@ async function loadOrders() {
 
         renderFilteredOrders();
         setupOrderControls();
+        await loadCustomers();
     } catch (e) {
         console.error("Error loading orders:", e);
         listElem.innerHTML = '<p class="text-red-500">Failed to load orders.</p>';
@@ -410,4 +411,67 @@ function exportOrdersCSV() {
     link.download = `orders_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     showMessage('Orders exported to CSV!', 'success');
+}
+
+async function loadCustomers() {
+    const listElem = document.getElementById('customer-list');
+    if (!listElem) return;
+
+    try {
+        if (allOrders.length === 0) {
+            listElem.innerHTML = '<p class="text-gray-500 text-center py-8">No customers found.</p>';
+            return;
+        }
+
+        const customersMap = {};
+        allOrders.forEach(o => {
+            const email = (o.email || 'guest').toLowerCase().trim();
+            if (!customersMap[email]) {
+                customersMap[email] = {
+                    name: o.name || 'Guest Customer',
+                    email: o.email || 'N/A',
+                    phone: o.phone || 'N/A',
+                    orderCount: 0,
+                    totalSpent: 0
+                };
+            }
+            
+            customersMap[email].orderCount += 1;
+            customersMap[email].totalSpent += (o.total || 0);
+        });
+
+        const customers = Object.values(customersMap);
+
+        listElem.innerHTML = customers.length > 0
+            ? `
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left font-bold text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-3 text-left font-bold text-gray-500 uppercase tracking-wider">Phone</th>
+                                <th class="px-6 py-3 text-center font-bold text-gray-500 uppercase tracking-wider">Orders</th>
+                                <th class="px-6 py-3 text-right font-bold text-gray-500 uppercase tracking-wider">Total Spent</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            ${customers.map(c => `
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">${c.name}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-gray-500">${c.email}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-gray-500">${c.phone}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center text-gray-500">${c.orderCount}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right font-semibold text-amber-800">${formatPrice(c.totalSpent)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `
+            : '<p class="text-gray-500 text-center py-8">No customers found.</p>';
+    } catch (err) {
+        console.error("Error loading customers:", err);
+        listElem.innerHTML = '<p class="text-red-500">Failed to load customer list.</p>';
+    }
 }

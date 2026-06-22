@@ -205,6 +205,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Initialize Mobile Navigation Menu
+    initializeMobileMenu();
 });
 
 async function fetchOrderHistory(userId) {
@@ -259,5 +262,74 @@ function renderOrderSummary() {
     orderSummaryItems.innerHTML = itemsHtml;
     if (summarySubtotalElem) summarySubtotalElem.textContent = formatPrice(subtotal);
     if (summaryTotalElem) summaryTotalElem.textContent = formatPrice(subtotal);
+}
+
+function initializeMobileMenu() {
+    const nav = document.querySelector('header nav');
+    if (!nav) return;
+
+    const iconsContainer = nav.querySelector('.flex.items-center.space-x-6') || nav.querySelector('.space-x-6');
+    if (!iconsContainer) return;
+
+    if (document.getElementById('mobile-menu-btn')) return;
+
+    const logo = nav.querySelector('a');
+    const isWhiteText = logo && (logo.classList.contains('text-white') || window.getComputedStyle(logo).color === 'rgb(255, 255, 255)');
+    const textColorClass = isWhiteText ? 'text-white' : 'text-brown-900';
+
+    const burgerBtn = document.createElement('button');
+    burgerBtn.id = 'mobile-menu-btn';
+    burgerBtn.className = `md:hidden text-xl focus:outline-none ${textColorClass} transition-transform duration-200 ml-2`;
+    burgerBtn.innerHTML = '<i class="fas fa-bars"></i>';
+    
+    iconsContainer.appendChild(burgerBtn);
+
+    const overlayHtml = `
+        <div id="mobile-menu-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity duration-300 opacity-0"></div>
+        <div id="mobile-menu-drawer" class="fixed top-0 left-0 h-full w-64 bg-white z-50 transform -translate-x-full transition-transform duration-300 ease-in-out shadow-2xl flex flex-col">
+            <div class="px-6 py-5 border-b flex justify-between items-center bg-brown-900 text-white">
+                <span class="font-bold tracking-widest text-lg font-playfair">KNIT & PURL</span>
+                <button id="close-mobile-menu-btn" class="text-white hover:text-gray-300 focus:outline-none">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="flex flex-col p-6 space-y-4 text-base font-semibold text-gray-800">
+                <a href="index.html" class="hover:text-amber-800 py-2 border-b border-gray-100 flex items-center gap-3"><i class="fas fa-home w-5 text-gray-400"></i> Home</a>
+                <a href="shop.html" class="hover:text-amber-800 py-2 border-b border-gray-100 flex items-center gap-3"><i class="fas fa-shopping-bag w-5 text-gray-400"></i> Shop</a>
+                <a href="about.html" class="hover:text-amber-800 py-2 border-b border-gray-100 flex items-center gap-3"><i class="fas fa-info-circle w-5 text-gray-400"></i> About Us</a>
+                <a href="contact.html" class="hover:text-amber-800 py-2 border-b border-gray-100 flex items-center gap-3"><i class="fas fa-envelope w-5 text-gray-400"></i> Contact</a>
+                <a href="profile.html" class="hover:text-amber-800 py-2 border-b border-gray-100 flex items-center gap-3"><i class="fas fa-user-circle w-5 text-gray-400"></i> My Account</a>
+                <a href="track-order.html" class="hover:text-amber-800 py-2 flex items-center gap-3"><i class="fas fa-truck w-5 text-gray-400"></i> Track Order</a>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', overlayHtml);
+
+    const drawer = document.getElementById('mobile-menu-drawer');
+    const backdrop = document.getElementById('mobile-menu-backdrop');
+    const closeBtn = document.getElementById('close-mobile-menu-btn');
+
+    let isOpen = false;
+
+    const toggleMenu = () => {
+        isOpen = !isOpen;
+        if (isOpen) {
+            backdrop.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                backdrop.classList.remove('opacity-0');
+                drawer.classList.remove('-translate-x-full');
+            });
+            document.body.style.overflow = 'hidden';
+        } else {
+            backdrop.classList.add('opacity-0');
+            drawer.classList.add('-translate-x-full');
+            setTimeout(() => backdrop.classList.add('hidden'), 300);
+            document.body.style.overflow = '';
+        }
+    };
+
+    burgerBtn.addEventListener('click', toggleMenu);
+    closeBtn.addEventListener('click', toggleMenu);
+    backdrop.addEventListener('click', toggleMenu);
 }
 

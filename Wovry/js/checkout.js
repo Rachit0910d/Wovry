@@ -115,11 +115,35 @@ export function initializeCheckout() {
                     return;
                 }
 
-                const functionUrl = 'https://us-central1-wovry-1873f.cloudfunctions.net/createCheckoutSession';
-                const response = await fetch(functionUrl, {
+                // Generate unique order ID
+                const uniqueOrderId = 'KP-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substr(2, 4).toUpperCase();
+
+                // Save preliminary order directly to Firestore client-side
+                const docRef = await addDoc(collection(db, "orders"), {
+                    orderId: uniqueOrderId,
+                    ...customerInfo,
+                    items: cart,
+                    subtotal,
+                    discount: currentDiscount,
+                    shipping: currentShipping,
+                    total,
+                    paymentMethod: 'stripe',
+                    paymentStatus: 'Pending',
+                    status: 'Pending',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                });
+
+                // Call local Express API to create checkout session
+                const response = await fetch('/api/create-checkout-session', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ items: cart, customerInfo, discount: currentDiscount }),
+                    body: JSON.stringify({ 
+                        items: cart, 
+                        orderId: docRef.id, 
+                        discount: currentDiscount,
+                        baseUrl: window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'))
+                    }),
                 });
 
                 if (!response.ok) throw new Error('Failed to create checkout session.');
@@ -167,7 +191,7 @@ function updateOrderSummary() {
                     <img src="${item.imageUrl}" alt="${item.name}" class="w-12 h-12 object-cover rounded">
                     <div>
                         <p class="text-sm font-medium">${item.name}</p>
-                        <p class="text-xs text-gray-500">Qty: ${item.quantity}</p>
+                        <p class="text-xs text-gray-500">${item.selectedSize ? `Size: ${item.selectedSize} | ` : ''}Qty: ${item.quantity}</p>
                     </div>
                 </div>
                 <span class="text-sm font-semibold">${formatPrice(item.price * item.quantity)}</span>

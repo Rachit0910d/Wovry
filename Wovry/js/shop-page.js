@@ -123,6 +123,14 @@ export async function initializeShopPage() {
     try {
         allProducts = await fetchProducts({ limitCount: 1000 }); // Fetch max for client side filtering for now
         populateFilters(allProducts);
+
+        const params = new URLSearchParams(window.location.search);
+        const categoryParam = params.get('category');
+        if (categoryParam) {
+            filters.category = categoryParam;
+            if (categoryFilter) categoryFilter.value = categoryParam;
+        }
+
         applyFilters();
 
         if (priceValue && priceRange) {

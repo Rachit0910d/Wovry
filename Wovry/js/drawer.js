@@ -140,19 +140,21 @@ export function renderCartDrawer() {
     let subtotal = 0;
     const itemsHtml = cart.map(item => {
         subtotal += item.price * item.quantity;
+        const itemId = item.cartItemId || item.id;
         return `
             <div class="flex gap-4 border-b pb-4 last:border-0 last:pb-0">
                 <img src="${item.imageUrl}" alt="${item.name}" class="w-20 h-24 object-cover rounded-md">
                 <div class="flex-grow flex flex-col justify-between">
                     <div>
                         <h4 class="font-semibold text-sm line-clamp-2">${item.name}</h4>
+                        ${item.selectedSize ? `<p class="text-xs text-gray-500 mt-0.5">Size: ${item.selectedSize}</p>` : ''}
                         <p class="text-brown-900 font-medium text-sm mt-1">${formatPrice(item.price)}</p>
                     </div>
                     <div class="flex items-center justify-between mt-2">
                         <div class="flex items-center border rounded-md">
-                             <input type="number" min="1" value="${item.quantity}" class="w-12 text-center text-sm py-1 focus:outline-none drawer-cart-quantity bg-transparent" data-id="${item.id}">
+                             <input type="number" min="1" value="${item.quantity}" class="w-12 text-center text-sm py-1 focus:outline-none drawer-cart-quantity bg-transparent" data-id="${itemId}">
                         </div>
-                        <button class="text-gray-400 hover:text-red-500 transition-colors drawer-remove-btn" data-id="${item.id}">
+                        <button class="text-gray-400 hover:text-red-500 transition-colors drawer-remove-btn" data-id="${itemId}">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>

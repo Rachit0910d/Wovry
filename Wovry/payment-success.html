@@ -20,9 +20,30 @@
         <a href="index.html" class="btn-primary py-3 px-8 rounded-full shadow-lg">Continue Shopping</a>
     </div>
 
-    <script>
+    <script type="module">
+        import { db } from './js/firebase-config.js';
+        import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
         // Clear the cart from local storage upon successful payment
         localStorage.removeItem('cart');
+
+        // Get order ID from URL query parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('orderId');
+
+        if (orderId) {
+            try {
+                const docRef = doc(db, "orders", orderId);
+                await updateDoc(docRef, {
+                    status: 'Processing',
+                    paymentStatus: 'Paid',
+                    updatedAt: new Date()
+                });
+                console.log("Order status updated to Paid client-side.");
+            } catch (error) {
+                console.error("Error updating order:", error);
+            }
+        }
     </script>
 </body>
 </html>

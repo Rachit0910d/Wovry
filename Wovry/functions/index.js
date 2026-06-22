@@ -32,41 +32,72 @@ exports.createCheckoutSession = functions.https.onRequest((req, res) => {
         }
 
         try {
-            const { items, customerInfo } = req.body;
+            const { items, customerInfo, discount, baseUrl } = req.body;
 
             if (!items || !Array.isArray(items) || items.length === 0) {
                 return res.status(400).send({ error: 'Invalid cart data.' });
             }
 
+            const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const discountAmount = Math.min(discount || 0, subtotal);
+            const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
+
             const lineItems = items.map(item => {
+                const discountedPrice = item.price * (1 - discountRatio);
                 return {
                     price_data: {
                         currency: 'inr',
                         product_data: {
                             name: item.name,
-                            images: [item.imageUrl],
+                            images: item.imageUrl ? [item.imageUrl] : [],
                         },
-                        unit_amount: Math.round(item.price * 100), // Price in smallest currency unit (paise)
+                        unit_amount: Math.round(discountedPrice * 100), // Price in smallest currency unit (paise)
                     },
                     quantity: item.quantity,
                 };
             });
 
-            // Create a preliminary order in Firestore with 'pending' status
+            // Calculate shipping charges (Free shipping)
+            const finalSubtotal = subtotal - discountAmount;
+            const shippingAmount = 0;
+
+            if (shippingAmount > 0) {
+                lineItems.push({
+                    price_data: {
+                        currency: 'inr',
+                        product_data: {
+                            name: 'Shipping Charges',
+                        },
+                        unit_amount: shippingAmount * 100,
+                    },
+                    quantity: 1,
+                });
+            }
+
+            const total = finalSubtotal + shippingAmount;
+
+            // Create a preliminary order in Firestore with 'Pending' status
             const orderRef = await admin.firestore().collection('orders').add({
                 ...customerInfo,
                 items: items,
-                total: items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-                status: 'pending',
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
+                subtotal: subtotal,
+                discount: discountAmount,
+                shipping: shippingAmount,
+                total: total,
+                status: 'Pending',
+                paymentStatus: 'Pending',
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
             });
+
+            const clientBaseUrl = baseUrl || req.headers.origin;
 
             const session = await stripe.checkout.sessions.create({
                 payment_method_types: ['card'],
                 line_items: lineItems,
                 mode: 'payment',
-                success_url: `${req.headers.origin}/Wovry/payment-success.html?session_id={CHECKOUT_SESSION_ID}`,
-                cancel_url: `${req.headers.origin}/Wovry/payment-cancel.html`,
+                success_url: `${clientBaseUrl}/payment-success.html?session_id={CHECKOUT_SESSION_ID}`,
+                cancel_url: `${clientBaseUrl}/payment-cancel.html`,
                 metadata: {
                     orderId: orderRef.id
                 }
@@ -108,8 +139,12 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
         try {
             // Update the order status in Firestore
             const orderRef = admin.firestore().collection('orders').doc(orderId);
-            await orderRef.update({ status: 'paid' });
-            console.log(`Successfully updated order ${orderId} to paid.`);
+            await orderRef.update({ 
+                status: 'Processing',
+                paymentStatus: 'Paid',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+            console.log(`Successfully updated order ${orderId} to Processing/Paid.`);
 
             // Optional: Send a confirmation email to the customer here
 
