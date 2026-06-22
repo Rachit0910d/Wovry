@@ -42,9 +42,9 @@ app.post('/api/create-checkout-session', async (req, res) => {
             };
         });
 
-        // Calculate shipping charges (Free shipping)
+        // Calculate shipping charges
         const finalSubtotal = subtotal - discountAmount;
-        const shippingAmount = 0;
+        const shippingAmount = subtotal >= 2000 ? 0 : 99;
 
         if (shippingAmount > 0) {
             lineItems.push({

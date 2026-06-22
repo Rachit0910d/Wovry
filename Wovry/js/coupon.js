@@ -42,12 +42,9 @@ export function applyCoupon(code, subtotal) {
     };
 }
 
-/**
- * Calculate shipping cost
- * Free above ₹2000, ₹99 flat below
- */
 export function calculateShipping(subtotal) {
-    return { cost: 0, message: 'Free Shipping!' };
+    if (subtotal >= 2000) return { cost: 0, message: 'Free Shipping!' };
+    return { cost: 99, message: 'Flat ₹99 shipping (Free above ₹2000)' };
 }
 
 /**
